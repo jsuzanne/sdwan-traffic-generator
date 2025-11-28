@@ -5,8 +5,6 @@
 # Usage: ./traffic-generator.sh [client-id]
 #
 
-set -euo pipefail
-
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -62,7 +60,13 @@ function log_error() {
 
 function getRandomInterface() {
     if [[ -f "${CONFIG_DIR}/interfaces.txt" ]]; then
-        sort -R "${CONFIG_DIR}/interfaces.txt" 2>/dev/null | head -n 1
+        local iface
+        iface=$(sort -R "${CONFIG_DIR}/interfaces.txt" 2>/dev/null | head -n 1)
+        if [[ -n "$iface" ]]; then
+            echo "$iface"
+        else
+            echo "eth0"
+        fi
     else
         echo "eth0"
     fi
@@ -70,7 +74,13 @@ function getRandomInterface() {
 
 function getRandomUserAgent() {
     if [[ -f "${CONFIG_DIR}/user_agents.txt" ]]; then
-        sort -R "${CONFIG_DIR}/user_agents.txt" 2>/dev/null | head -n 1
+        local ua
+        ua=$(sort -R "${CONFIG_DIR}/user_agents.txt" 2>/dev/null | head -n 1)
+        if [[ -n "$ua" ]]; then
+            echo "$ua"
+        else
+            echo "Mozilla/5.0 (compatible; SD-WAN-Traffic-Gen/1.0)"
+        fi
     else
         echo "Mozilla/5.0 (compatible; SD-WAN-Traffic-Gen/1.0)"
     fi
@@ -93,7 +103,7 @@ function getWeightedApp() {
     
     if [[ $total -eq 0 ]]; then
         log_error "No valid applications found in config"
-        echo "google.com|/robots.txt"
+        echo "google.com|/"
         return
     fi
     
@@ -107,6 +117,9 @@ function getWeightedApp() {
             return
         fi
     done
+    
+    # Fallback to first app
+    echo "${apps[0]}|${endpoints[0]}"
 }
 
 # ============================================================================
@@ -130,10 +143,13 @@ function checkBackoff() {
     local key=$1
     local current_time=$(date +'%s')
     
-    if [[ -n "${!key:-}" ]]; then
-        if [[ $current_time -gt ${!key} ]]; then
+    # Check if backoff variable exists
+    local backoff_var="${key}_BACKOFF"
+    if [[ -v "$backoff_var" ]]; then
+        local backoff_time="${!backoff_var}"
+        if [[ $current_time -gt $backoff_time ]]; then
             # Backoff expired
-            eval unset "$key"
+            unset "$backoff_var"
             return 0
         else
             # Still in backoff
@@ -149,7 +165,9 @@ function setBackoff() {
     local backoff_duration=$(calculateBackoff "$key")
     local backoff_until=$((current_time + backoff_duration))
     
-    eval "$key=$backoff_until"
+    local backoff_var="${key}_BACKOFF"
+    eval "$backoff_var=$backoff_until"
+    
     ((BACKOFF_LEVEL[$key]++))
     
     log_warn "Backoff set for $key until $backoff_until (level ${BACKOFF_LEVEL[$key]})"
@@ -169,6 +187,14 @@ function updateStats() {
     local code=$2
     local app_name="${app%%.*}"
     
+    # Initialiser les compteurs s'ils n'existent pas
+    if [[ ! -v "APP_COUNTERS[$app_name]" ]]; then
+        APP_COUNTERS[$app_name]=0
+    fi
+    if [[ ! -v "APP_ERRORS[$app_name]" ]]; then
+        APP_ERRORS[$app_name]=0
+    fi
+    
     ((APP_COUNTERS[$app_name]++))
     ((TOTAL_REQUESTS++))
     
@@ -183,23 +209,39 @@ function updateStats() {
 }
 
 function writeStats() {
-    cat > "$STATS_FILE" <<EOF
-{
-  "timestamp": $(date +%s),
-  "client_id": "$CLIENTID",
-  "total_requests": $TOTAL_REQUESTS,
-  "requests_by_app": {
-$(for app in "${!APP_COUNTERS[@]}"; do
-    echo "    \"$app\": ${APP_COUNTERS[$app]},"
-done | sed '$ s/,$//')
-  },
-  "errors_by_app": {
-$(for app in "${!APP_ERRORS[@]}"; do
-    echo "    \"$app\": ${APP_ERRORS[$app]:-0},"
-done | sed '$ s/,$//')
-  }
-}
-EOF
+    {
+        echo "{"
+        echo "  \"timestamp\": $(date +%s),"
+        echo "  \"client_id\": \"$CLIENTID\","
+        echo "  \"total_requests\": $TOTAL_REQUESTS,"
+        echo "  \"requests_by_app\": {"
+        
+        local first=true
+        for app in "${!APP_COUNTERS[@]}"; do
+            if [[ "$first" == "true" ]]; then
+                first=false
+            else
+                echo ","
+            fi
+            echo -n "    \"$app\": ${APP_COUNTERS[$app]}"
+        done
+        echo ""
+        echo "  },"
+        
+        echo "  \"errors_by_app\": {"
+        first=true
+        for app in "${!APP_ERRORS[@]}"; do
+            if [[ "$first" == "true" ]]; then
+                first=false
+            else
+                echo ","
+            fi
+            echo -n "    \"$app\": ${APP_ERRORS[$app]:-0}"
+        done
+        echo ""
+        echo "  }"
+        echo "}"
+    } > "$STATS_FILE" 2>/dev/null || log_error "Failed to write stats"
 }
 
 # ============================================================================
@@ -217,23 +259,25 @@ function makeRequest() {
     
     log_info "$CLIENTID requesting $url via $interface (traceid: $trace_id)"
     
-    local curl_result
-    curl_result=$(curl \
+    # Execute curl and capture only HTTP code
+    local http_code
+    http_code=$(curl \
         --interface "$interface" \
         -H "User-Agent: $user_agent" \
         -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
         -H "Accept-Language: en-US,en;q=0.9,fr;q=0.8" \
-        -H "Cache-Control: no-cache" \
         -sL \
         -m "$MAX_TIMEOUT" \
-        -w "%{http_code}|%{url_effective}" \
+        -w "%{http_code}" \
         -o /dev/null \
-        "$url" 2>&1 || echo "000|curl_error")
+        "$url" 2>/dev/null || echo "000")
     
-    local curl_code="${curl_result%%|*}"
-    local curl_url="${curl_result#*|}"
+    # Validate http_code
+    if [[ -z "$http_code" ]] || [[ ! "$http_code" =~ ^[0-9]+$ ]]; then
+        http_code="000"
+    fi
     
-    echo "$curl_code|$curl_url"
+    echo "${http_code}|${url}"
 }
 
 # ============================================================================
@@ -249,6 +293,7 @@ function main() {
         exit 1
     fi
     
+    # Main loop
     while true; do
         # Get random variables
         local interface=$(getRandomInterface)
@@ -259,12 +304,18 @@ function main() {
         local app="${app_data%%|*}"
         local endpoint="${app_data#*|}"
         
+        # Skip if empty
+        if [[ -z "$app" ]]; then
+            sleep 1
+            continue
+        fi
+        
         # Create backoff key
         local backoff_key=$(echo "${interface}_${app}" | tr '.:/-' '_')
         
         # Check if in backoff
         if ! checkBackoff "$backoff_key"; then
-            log_info "$CLIENTID skipping $app (in backoff until ${!backoff_key})"
+            log_info "$CLIENTID skipping $app (in backoff)"
             sleep 1
             continue
         fi
@@ -292,11 +343,18 @@ function main() {
 }
 
 # ============================================================================
+# SIGNAL HANDLERS
+# ============================================================================
+
+trap 'log_info "Received SIGTERM, shutting down..."; exit 0' SIGTERM
+trap 'log_info "Received SIGINT, shutting down..."; exit 0' SIGINT
+
+# ============================================================================
 # INITIALIZATION
 # ============================================================================
 
 # Create directories if needed
-mkdir -p "$CONFIG_DIR" "$LOG_DIR"
+mkdir -p "$CONFIG_DIR" "$LOG_DIR" 2>/dev/null || true
 
 # Run main loop
 main
