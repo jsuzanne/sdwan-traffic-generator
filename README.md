@@ -55,18 +55,18 @@ This tool is specifically tested and optimized for Palo Alto Prisma SD-WAN, supp
 
 Perfect for demos and testing. Takes ~2 minutes.
 
-Download and install
+Download and install:
 wget https://github.com/jsuzanne/sdwan-traffic-generator/archive/refs/heads/main.zip
 unzip main.zip
 cd sdwan-traffic-generator-main
 chmod +x install.sh
 sudo ./install.sh
 
-Start the service
+Start the service:
 sudo systemctl start sdwan-traffic-gen
 sudo systemctl enable sdwan-traffic-gen
 
-Verify
+Verify:
 sudo systemctl status sdwan-traffic-gen
 tail -f /var/log/sdwan-traffic-gen/traffic.log
 
