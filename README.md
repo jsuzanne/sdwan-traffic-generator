@@ -67,15 +67,19 @@ sudo ./install.sh
 
 Start the service:
 
+```bash
 sudo systemctl start sdwan-traffic-gen
 sudo systemctl enable sdwan-traffic-gen
+```
 
 Verify:
 
+```bash
 sudo systemctl status sdwan-traffic-gen
 tail -f /var/log/sdwan-traffic-gen/traffic.log
 
 Press `Ctrl+C` to stop watching logs. Traffic generation starts immediately!
+```
 
 ---
 
@@ -83,17 +87,23 @@ Press `Ctrl+C` to stop watching logs. Traffic generation starts immediately!
 
 For developers who want to contribute or modify the code.
 
+```bash
 Clone repository
 git clone https://github.com/jsuzanne/sdwan-traffic-generator.git
 cd sdwan-traffic-generator
+```
 
 Install
+```bash
 chmod +x install.sh
 sudo ./install.sh
+```
 
 Start
+```bash
 sudo systemctl start sdwan-traffic-gen
 sudo systemctl enable sdwan-traffic-gen
+```
 
 ---
 
