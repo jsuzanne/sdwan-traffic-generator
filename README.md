@@ -128,6 +128,7 @@ After installation completes, you'll see:
 
 📋 Next steps:
 
+```bash
 sudo systemctl start sdwan-traffic-gen
 
 sudo systemctl enable sdwan-traffic-gen
@@ -135,6 +136,7 @@ sudo systemctl enable sdwan-traffic-gen
 sudo systemctl status sdwan-traffic-gen
 
 tail -f /var/log/sdwan-traffic-gen/traffic.log
+```
 
 **What happens next:**
 - ✅ Traffic generation starts within seconds
@@ -147,13 +149,19 @@ tail -f /var/log/sdwan-traffic-gen/traffic.log
 ### First Verification
 
 Check the service is running
+```bash
 sudo systemctl status sdwan-traffic-gen
+```
 
 Watch live traffic (Ctrl+C to exit)
+```bash
 tail -f /var/log/sdwan-traffic-gen/traffic.log
+```
 
 View statistics after 1-2 minutes
+```bash
 cat /var/log/sdwan-traffic-gen/stats.json | jq
+```
 
 Expected output:
 {
@@ -172,13 +180,17 @@ Expected output:
 ### Troubleshooting Installation
 
 **Service won't start?**
+```bash
 sudo journalctl -u sdwan-traffic-gen -n 50 --no-pager
+```
 
 **No traffic in logs?**
 Check network interface
+```bash
 ip link show
 echo "YOUR_INTERFACE_NAME" | sudo tee /opt/sdwan-traffic-gen/config/interfaces.txt
 sudo systemctl restart sdwan-traffic-gen
+```
 
 See full [Troubleshooting Guide](docs/TROUBLESHOOTING.md) for more solutions.
 
@@ -187,54 +199,82 @@ See full [Troubleshooting Guide](docs/TROUBLESHOOTING.md) for more solutions.
 ### Basic Monitoring
 
 View real-time logs
+```bash
 tail -f /var/log/sdwan-traffic-gen/traffic.log
+```
 
 View statistics
+```bash
 cat /var/log/sdwan-traffic-gen/stats.json | jq
+```
 
 Watch statistics live (updates every 5 seconds)
+```bash
 watch -n 5 'cat /var/log/sdwan-traffic-gen/stats.json 2>/dev/null | jq'
+```
 
 Check service status
+```bash
 sudo systemctl status sdwan-traffic-gen
+```
 
 Count total requests
+```bash
 grep -c SUCCESS /var/log/sdwan-traffic-gen/traffic.log
+```
 
 Top 10 applications by request count
+```bash
 grep SUCCESS /var/log/sdwan-traffic-gen/traffic.log |
 awk -F'/' '{print $3}' | awk '{print $1}' |
 sort | uniq -c | sort -nr | head -10
+```
 
 ### Service Management
 
 Start service
+```bash
 sudo systemctl start sdwan-traffic-gen
+```
 
 Stop service
+```bash
 sudo systemctl stop sdwan-traffic-gen
+```
 
 Restart service
+```bash
 sudo systemctl restart sdwan-traffic-gen
+```
 
 Enable auto-start on boot
+```bash
 sudo systemctl enable sdwan-traffic-gen
+```
 
 Disable auto-start
+```bash
 sudo systemctl disable sdwan-traffic-gen
+```
 
 View service logs
+```bash
 sudo journalctl -u sdwan-traffic-gen -f
+```
 
 ### Customizing Traffic Distribution
 
 #### Quick Edit
 
 Edit application weights
+```bash
 sudo nano /opt/sdwan-traffic-gen/config/applications.txt
+```
 
 Restart to apply changes
+```bash
 sudo systemctl restart sdwan-traffic-gen
+```
 
 #### Format
 domain|weight|endpoint
@@ -309,12 +349,16 @@ See [Configuration Guide](docs/CONFIGURATION.md#weight-calculation) for detailed
 By default, traffic uses `eth0`. To use different or multiple interfaces:
 
 Edit interfaces file
+```bash
 sudo nano /opt/sdwan-traffic-gen/config/interfaces.txt
+```
 
 Example: Multiple interfaces for load balancing
+```bash
 eth0
 eth1
 ens192
+```
 
 Traffic will be randomly distributed across all listed interfaces.
 
@@ -322,25 +366,35 @@ Traffic will be randomly distributed across all listed interfaces.
 
 Modify the sleep time between requests:
 
+```bash
 sudo nano /opt/sdwan-traffic-gen/traffic-generator.sh
+```
 
 Find and modify:
+```bash
 SLEEP_BETWEEN_REQUESTS=1 # Default: 60 requests/min
+```
 
 Examples:
+```bash
 SLEEP_BETWEEN_REQUESTS=0.5 # 120 requests/min (busier)
 SLEEP_BETWEEN_REQUESTS=2 # 30 requests/min (lighter)
 SLEEP_BETWEEN_REQUESTS=0.1 # 600 requests/min (heavy load)
+```
 
 ### User Agents
 
 Customize browser and application signatures:
 
+```bash
 sudo nano /opt/sdwan-traffic-gen/config/user_agents.txt
+```
 
 Add custom agents, one per line
+```bash
 Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15
+```
 
 ## 🎨 Pre-configured Profiles
 
