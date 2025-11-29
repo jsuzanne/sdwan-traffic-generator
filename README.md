@@ -70,8 +70,6 @@ Verify
 sudo systemctl status sdwan-traffic-gen
 tail -f /var/log/sdwan-traffic-gen/traffic.log
 
-text
-
 Press `Ctrl+C` to stop watching logs. Traffic generation starts immediately!
 
 ---
@@ -91,8 +89,6 @@ sudo ./install.sh
 Start
 sudo systemctl start sdwan-traffic-gen
 sudo systemctl enable sdwan-traffic-gen
-
-text
 
 ---
 
@@ -125,8 +121,6 @@ sudo systemctl status sdwan-traffic-gen
 
 tail -f /var/log/sdwan-traffic-gen/traffic.log
 
-text
-
 **What happens next:**
 - ✅ Traffic generation starts within seconds
 - ✅ Service auto-starts on boot
@@ -157,7 +151,6 @@ Expected output:
 "google": 20
 }
 }
-text
 
 ---
 
@@ -166,15 +159,11 @@ text
 **Service won't start?**
 sudo journalctl -u sdwan-traffic-gen -n 50 --no-pager
 
-text
-
 **No traffic in logs?**
 Check network interface
 ip link show
 echo "YOUR_INTERFACE_NAME" | sudo tee /opt/sdwan-traffic-gen/config/interfaces.txt
 sudo systemctl restart sdwan-traffic-gen
-
-text
 
 See full [Troubleshooting Guide](docs/TROUBLESHOOTING.md) for more solutions.
 
@@ -202,8 +191,6 @@ grep SUCCESS /var/log/sdwan-traffic-gen/traffic.log |
 awk -F'/' '{print $3}' | awk '{print $1}' |
 sort | uniq -c | sort -nr | head -10
 
-text
-
 ### Service Management
 
 Start service
@@ -224,8 +211,6 @@ sudo systemctl disable sdwan-traffic-gen
 View service logs
 sudo journalctl -u sdwan-traffic-gen -f
 
-text
-
 ### Customizing Traffic Distribution
 
 #### Quick Edit
@@ -236,12 +221,8 @@ sudo nano /opt/sdwan-traffic-gen/config/applications.txt
 Restart to apply changes
 sudo systemctl restart sdwan-traffic-gen
 
-text
-
 #### Format
 domain|weight|endpoint
-
-text
 
 **Example:**
 Higher weight = more traffic
@@ -250,8 +231,6 @@ outlook.office365.com|95|/
 google.com|50|/
 slack.com|45|/api/api.test
 
-text
-
 #### Understanding Weights
 
 Weights are **relative**, not absolute percentages:
@@ -259,8 +238,6 @@ Weights are **relative**, not absolute percentages:
 teams.microsoft.com|100|/ # 100/200 = 50% of traffic
 google.com|50|/ # 50/200 = 25% of traffic
 slack.com|50|/api/api.test # 50/200 = 25% of traffic
-
-text
 
 See [Configuration Guide](docs/CONFIGURATION.md#weight-calculation) for detailed examples.
 
@@ -291,8 +268,6 @@ See [Configuration Guide](docs/CONFIGURATION.md#weight-calculation) for detailed
 [2025-11-28 17:20:19] [INFO] client01 requesting https://slack.com/api/api.test via eth0 (traceid: 1732812019-client01)
 [2025-11-28 17:20:20] [INFO] client01 SUCCESS https://slack.com/api/api.test - code: 200
 
-text
-
 ### Statistics JSON
 {
 "timestamp": 1732812100,
@@ -312,8 +287,6 @@ text
 }
 }
 
-text
-
 ## 🔧 Configuration
 
 ### Network Interfaces
@@ -327,8 +300,6 @@ Example: Multiple interfaces for load balancing
 eth0
 eth1
 ens192
-
-text
 
 Traffic will be randomly distributed across all listed interfaces.
 
@@ -346,8 +317,6 @@ SLEEP_BETWEEN_REQUESTS=0.5 # 120 requests/min (busier)
 SLEEP_BETWEEN_REQUESTS=2 # 30 requests/min (lighter)
 SLEEP_BETWEEN_REQUESTS=0.1 # 600 requests/min (heavy load)
 
-text
-
 ### User Agents
 
 Customize browser and application signatures:
@@ -357,8 +326,6 @@ sudo nano /opt/sdwan-traffic-gen/config/user_agents.txt
 Add custom agents, one per line
 Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15
-
-text
 
 ## 🎨 Pre-configured Profiles
 
@@ -378,8 +345,6 @@ Others - 45%
 zoom.us|80|/
 slack.com|70|/
 
-text
-
 ### Profile 2: Cloud-Native Startup (30% Cloud Providers)
 Cloud Providers - 30%
 portal.azure.com|100|/
@@ -394,8 +359,6 @@ Collaboration - 20%
 slack.com|75|/
 zoom.us|70|/
 
-text
-
 ### Profile 3: Remote Work (40% Video Conferencing)
 Video - 40%
 zoom.us|150|/
@@ -409,8 +372,6 @@ miro.com|100|/
 
 Others - 30%
 drive.google.com|90|/
-
-text
 
 See [Configuration Guide](docs/CONFIGURATION.md#custom-profiles-for-different-scenarios) for more examples.
 
@@ -428,7 +389,6 @@ Expected size:
 - traffic.log: 0-100 MB (active log)
 - traffic.log.1-7.gz: ~100 MB total (compressed archives)
 - stats.json: < 10 MB
-text
 
 ### Performance Metrics
 
@@ -446,8 +406,6 @@ grep SUCCESS /var/log/sdwan-traffic-gen/traffic.log |
 awk -F'/' '{print $3}' | awk '{print $1}' |
 sort | uniq -c | sort -nr
 
-text
-
 ## 🐛 Troubleshooting
 
 ### Service won't start
@@ -460,8 +418,6 @@ sudo /opt/sdwan-traffic-gen/traffic-generator.sh client01
 
 Verify configuration
 ls -la /opt/sdwan-traffic-gen/config/
-
-text
 
 ### No traffic in logs
 
@@ -477,8 +433,6 @@ curl --interface eth0 -I https://teams.microsoft.com
 Restart service
 sudo systemctl restart sdwan-traffic-gen
 
-text
-
 ### Applications not identified in SD-WAN
 
 **Solution 1: Use application-specific endpoints**
@@ -488,14 +442,10 @@ teams.microsoft.com|100|/
 Use specific API endpoints:
 teams.microsoft.com|100|/api/mt/emea/beta/users/
 
-text
-
 **Solution 2: Enable SSL inspection** on your SD-WAN device (vendor-specific)
 
 **Solution 3: Verify SNI is visible**
 sudo tcpdump -i eth0 -n port 443 | grep -i "teams.microsoft"
-
-text
 
 See [Troubleshooting Guide](docs/TROUBLESHOOTING.md) for more solutions.
 
@@ -519,8 +469,6 @@ sudo cp /tmp/applications.txt.bak /opt/sdwan-traffic-gen/config/applications.txt
 Restart
 sudo systemctl restart sdwan-traffic-gen
 
-text
-
 ## 🗑️ Uninstallation
 
 Stop and disable service
@@ -535,8 +483,6 @@ sudo rm /etc/logrotate.d/sdwan-traffic-gen
 
 Reload systemd
 sudo systemctl daemon-reload
-
-text
 
 ## 📚 Documentation
 
