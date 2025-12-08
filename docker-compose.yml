@@ -1,0 +1,42 @@
+services:
+  # The Traffic Generator Engine
+  traffic-gen:
+    build:
+      context: .
+      dockerfile: Dockerfile.traffic-gen
+    container_name: sdwan-traffic-gen
+    restart: unless-stopped
+    volumes:
+      # Mount config so it can be updated
+      - ./config:/opt/sdwan-traffic-gen/config
+      # Shared logs volume
+      - traffic_logs:/var/log/sdwan-traffic-gen
+    environment:
+      - SLEEP_BETWEEN_REQUESTS=1
+
+  # The Web Dashboard
+  web-ui:
+    build:
+      context: ./web-dashboard
+    container_name: sdwan-web-ui
+    restart: unless-stopped
+    ports:
+      - "8080:3000"
+    volumes:
+      # Access to same config and logs
+      - ./config:/app/config
+      # We map the config directory to ../config relative to /app (which is where server.ts expects it in dev, 
+      # but in prod we might need to adjust logic or map it cleanly)
+      # server.ts logic: "process.env.CONFIG_DIR || path.join(__dirname, '../config')"
+      # In container, workdir is /app. __dirname is /app. So it looks for /config.
+      # So we mount ./config to /config
+
+      # Shared logs
+      - traffic_logs:/var/log/sdwan-traffic-gen
+    environment:
+      - NODE_ENV=production
+      - CONFIG_DIR=/app/config
+      - LOG_DIR=/var/log/sdwan-traffic-gen
+
+volumes:
+  traffic_logs:

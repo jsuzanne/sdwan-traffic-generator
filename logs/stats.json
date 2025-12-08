@@ -1,0 +1,14 @@
+{
+    "timestamp": 1732812100,
+    "client_id": "client01",
+    "total_requests": 1250,
+    "requests_by_app": {
+        "outlook": 120,
+        "teams": 100,
+        "slack": 50,
+        "zoom": 30
+    },
+    "errors_by_app": {
+        "discord": 2
+    }
+}
